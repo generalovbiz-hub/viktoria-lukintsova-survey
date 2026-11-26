@@ -37,11 +37,26 @@ function makeQuestion(q, index) {
       wrap.append(input,document.createTextNode(label));choices.append(wrap);
     });section.append(choices);
     const contacts=document.createElement('div');contacts.className='contact-fields';contacts.hidden=true;contacts.id='contact-fields';
-    const contactNote=document.createElement('p');contactNote.className='contact-note';contactNote.textContent='Если готовы к интервью, оставьте имя и один удобный контакт на выбор — Tg, WhatsApp или Max. Все три заполнять не нужно.';contacts.append(contactNote);
-    [['name','Имя','Как к вам обращаться'],['telegram','Ник в Tg','@username'],['whatsapp','Номер в WhatsApp','+7 …'],['max','Номер в Max','+7 …']].forEach(([name,label,placeholder])=>{const field=document.createElement('label');field.textContent=label;const input=document.createElement('input');input.type='text';input.name=name;input.className='text-field';input.placeholder=placeholder;input.autocomplete='off';field.append(input);contacts.append(field);});
+    const contactNote=document.createElement('p');contactNote.className='contact-note';contactNote.textContent='Если готовы к интервью, укажите имя и выберите один удобный способ связи.';contacts.append(contactNote);
+    const nameField=document.createElement('label');nameField.className='contact-entry';nameField.textContent='Имя';
+    const nameInput=document.createElement('input');nameInput.type='text';nameInput.name='name';nameInput.className='text-field';nameInput.placeholder='Как к вам обращаться';nameInput.autocomplete='name';nameField.append(nameInput);contacts.append(nameField);
+    const methodTitle=document.createElement('p');methodTitle.className='contact-note';methodTitle.textContent='Как с вами связаться? Выберите один вариант:';contacts.append(methodTitle);
+    const methods=document.createElement('div');methods.className='options contact-methods';methods.setAttribute('role','radiogroup');methods.setAttribute('aria-label','Способ связи');contacts.append(methods);
+    const contactFields={};
+    [['telegram','Tg','Ник в Tg','@username'],['whatsapp','WhatsApp','Номер в WhatsApp','+7 …'],['max','Max','Номер в Max','+7 …']].forEach(([key,methodLabel,fieldLabel,placeholder])=>{
+      const option=document.createElement('label');option.className='option';
+      const choice=document.createElement('input');choice.type='radio';choice.name='contact_method';choice.value=key;
+      option.append(choice,document.createTextNode(methodLabel));methods.append(option);
+      const field=document.createElement('label');field.className='contact-entry';field.textContent=fieldLabel;field.hidden=true;
+      const input=document.createElement('input');input.type='text';input.name=key;input.className='text-field';input.placeholder=placeholder;input.autocomplete='off';input.inputMode=key==='telegram'?'text':'tel';field.append(input);contacts.append(field);
+      contactFields[key]={field,input};
+    });
+    const contactError=document.createElement('p');contactError.className='contact-error';contactError.hidden=true;contactError.setAttribute('role','alert');contacts.append(contactError);
     const followup=document.createElement('p');followup.className='contact-note';followup.textContent='Моя помощница напишет вам и предложит время для звонка. До встречи!';contacts.append(followup);
     section.append(contacts);
     choices.addEventListener('change',()=>{contacts.hidden=form.elements[q.id].value!=='Да';});
+    methods.addEventListener('change',()=>{const selected=form.elements.contact_method.value;Object.entries(contactFields).forEach(([key,{field,input}])=>{field.hidden=key!==selected;if(key!==selected)input.value='';});contactError.hidden=true;status.textContent='';});
+    contacts.addEventListener('input',()=>{contactError.hidden=true;status.textContent='';});
   } else {
     const options=document.createElement('div');options.className='options';
     q.options.forEach((label)=>{const wrap=document.createElement('label');wrap.className='option';const input=document.createElement('input');input.type=q.type==='multi'?'checkbox':'radio';input.name=q.id;input.value=label;wrap.append(input,document.createTextNode(label));options.append(wrap);});
@@ -77,6 +92,19 @@ form.addEventListener('submit',event=>{
   if(pending)return;
   if(!config.endpoint){status.textContent='Анкета готовится к запуску. Отправка ответов пока недоступна.';return;}
   const data=Object.fromEntries(questions.map(q=>[q.id,getAnswer(q)]));
+  if(data.q11==='Да'){
+    const contacts=document.getElementById('contact-fields');
+    const error=contacts.querySelector('.contact-error');
+    const name=form.elements.name;
+    const method=form.elements.contact_method.value;
+    const contact=method?form.elements[method]:null;
+    let missing=null;
+    if(!name.value.trim()){error.textContent='Укажите имя, чтобы мы знали, как к вам обращаться.';missing=name;}
+    else if(!method){error.textContent='Выберите один способ связи: Tg, WhatsApp или Max.';missing=contacts.querySelector('input[name="contact_method"]');}
+    else if(!contact.value.trim()){error.textContent='Укажите контакт для выбранного способа связи.';missing=contact;}
+    if(missing){error.hidden=false;status.textContent='Для участия в интервью нужны имя и один контакт.';missing.focus();contacts.scrollIntoView({block:'center',behavior:'smooth'});return;}
+    error.hidden=true;
+  }
   ['name','telegram','whatsapp','max'].forEach(key=>data[key]=data.q11==='Да'?form.elements[key].value.trim():'');
   const transport=document.createElement('form');transport.method='POST';transport.action=config.endpoint;transport.target='survey-sink';transport.hidden=true;
   const payload=document.createElement('input');payload.name='payload';payload.value=JSON.stringify(data);transport.append(payload);document.body.append(transport);
