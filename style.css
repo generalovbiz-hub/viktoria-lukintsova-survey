@@ -2,3 +2,4 @@
 
 [hidden]{display:none!important}.contact-fields .text-field{margin-left:0;width:100%}.contact-note{grid-column:1/-1;margin:0;color:#6d6763;font-size:14px;line-height:1.5}
 .contact-entry,.contact-methods,.contact-error{grid-column:1/-1}.contact-methods{margin-left:0}.contact-error{margin:0;color:#9b4f43;font-size:14px}
+.contact-fields .contact-methods .option{align-items:center;min-width:0}.contact-fields .contact-methods .option input{flex:0 0 17px;width:17px;height:17px;margin:0}
